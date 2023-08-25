@@ -11,11 +11,11 @@ volumes:
 x-op-restart-policy: &restart_policy
   restart: unless-stopped
 x-op-image: &image
-  image: openproject/community:${TAG:-13}
+  build: .  # Esto indica que debe construir la imagen a partir del Dockerfile en el directorio actual
 x-op-app: &app
   <<: [*image, *restart_policy]
   environment:
-    OPENPROJECT_HTTPS: "${OPENPROJECT_HTTPS:-true}"
+    OPENPROJECT_HTTPS: "${OPENPROJECT_HTTPS:-false}"
     OPENPROJECT_HOST__NAME: "${OPENPROJECT_HOST__NAME:-localhost:8080}"
     OPENPROJECT_HSTS: "${OPENPROJECT_HSTS:-true}"
     RAILS_CACHE_STORE: "memcache"
@@ -24,8 +24,17 @@ x-op-app: &app
     DATABASE_URL: "${DATABASE_URL:-postgres://postgres:p4ssw0rd@db/openproject?pool=20&encoding=unicode&reconnect=true}"
     RAILS_MIN_THREADS: ${RAILS_MIN_THREADS:-4}
     RAILS_MAX_THREADS: ${RAILS_MAX_THREADS:-16}
-    # set to true to enable the email receiving feature. See ./docker/cron for more options
     IMAP_ENABLED: "${IMAP_ENABLED:-false}"
+    SMTP_ENABLE: "${SMTP_ENABLE}"
+    SMTP_ADDRESS: "${SMTP_ADDRESS}"
+    SMTP_PORT: "${SMTP_PORT}"
+    SMTP_USER_NAME: "${SMTP_USER_NAME}"
+    SMTP_PASSWORD: "${SMTP_PASSWORD}"
+    SMTP_DOMAIN: "${SMTP_DOMAIN}"
+    SMTP_AUTHENTICATION: "${SMTP_AUTHENTICATION}"
+    SMTP_ENABLE_STARTTLS_AUTO: "${SMTP_ENABLE_STARTTLS_AUTO}"
+    SMTP_TLS: "${SMTP_TLS}"
+    SMTP_OPENSSL_VERIFY_MODE: "${SMTP_OPENSSL_VERIFY_MODE}"
   volumes:
     - "${OPDATA:-opdata}:/var/openproject/assets"
 
@@ -34,6 +43,8 @@ services:
     image: postgres:13
     <<: *restart_policy
     stop_grace_period: "3s"
+    ports:
+      - "5432:5432"
     volumes:
       - "${PGDATA:-pgdata}:/var/lib/postgresql/data"
     environment:
@@ -63,7 +74,7 @@ services:
 
   web:
     <<: *app
-    command: "./docker/prod/web"
+    command: bash -c "bundle exec rake db:migrate && ./docker/prod/web"
     networks:
       - frontend
       - backend
@@ -115,4 +126,3 @@ services:
     restart: on-failure
     networks:
       - backend
-

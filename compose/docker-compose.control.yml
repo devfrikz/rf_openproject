@@ -48,4 +48,3 @@ services:
   cache:
     restart: "no"
     entrypoint: ["echo", "disabled"]
-
